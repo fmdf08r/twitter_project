@@ -1,0 +1,78 @@
+\def\year{2016}
+%File: formatting-instruction.tex
+\documentclass[letterpaper]{article}
+\usepackage{aaai}
+\usepackage{times}
+\usepackage{helvet}
+\usepackage{courier}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\graphicspath{{figs/}}
+\frenchspacing
+\setlength{\pdfpagewidth}{8.5in}
+\setlength{\pdfpageheight}{11in}
+\pdfinfo{
+/Title (Project Main)
+/Author (XXX)}
+\setcounter{secnumdepth}{0}  
+ \begin{document}
+% The file aaai.sty is the style file for AAAI Press 
+% proceedings, working notes, and technical reports.
+%
+\title{Twitter Project: White Paper}
+\author{F. M. Delle Fave
+%Association for the Advancement of Artificial Intelligence\\
+%2275 East Bayshore Road, Suite 160\\
+%Palo Alto, California 94303\\
+}
+\maketitle
+
+\section{Problem Description}
+
+From a high-level perspective the aim of this work is to make sense of twitter data. Specifically, we aim to extract information from tweets, and use such information to measure similarity between tweets. Our scope is general, we wish to capture all types of information--- the topic of a tweet, the sentiments of the user posting the tweet or some of the keywords used in the tweet--- and use it to define the best possible similarity, or distance, measure between tweets.
+
+There exists a vast literature about measuring similarity between words, sentences, paragraphs and general documents. The key idea, is to transform a sequence of words into a vector representation within a vector space and then use standard distance metrics, such as euclidean or cosine distance to define their similarity. Cosine similarity, in particular, has been shown to characterize well the semantic similarity between sequences of words. In essence, the cosine similarity of two vectors $v_1$ and $v_2$ varies within a spectrum of values going from $0$, in which case the two vectors are orthogonal (i.e., no semantic similarity at all) to $v_1 \cdot v_2 = v^2$ in which case the two vectors are parallel (same semantics). 
+
+In this work, we aim to define a novel similarity metric which work specifically for measuring semantic similarity between tweets. To be specific, we wish to learn such metric using semi-supervised data. In what follows, we describe our initial model and key ideas about the key research challenges of this work, and on how we wish to proceed from now on. 
+
+\section{Problem Model}
+
+We consider a set of tweets $\mathcal{T} = \{ t_1, t_2, t_3, \dots, t_M \}$, where $M$ can be as large as several millions. Given this data, we wish two learn: (i) the word representation of a tweet and (ii) a distance metric between tweets based on this representation. We first describe how we define our word representation and then we describe the metric learning problem.
+
+\subsection{Word Representations for Tweets}
+
+We wish to define a word representation $\mathbf{x}_t$ for each tweet $t \in \mathcal{T}$. Ideally, we could use one of the existing word2vec models which calculate a vector representation by counting word n-gram frequencies. By doing so, however, we would consider each word within a tweet to have same importance as the other ones. This is clearly not the case, specifically in the context of tweets, as some keywords will matter much more than others when trying to understand the semantics of a tweet, i.e., the sentiment of the user which posted such tweet. Nonetheless, we can build upon CBOW, a well-known word2vec embedding, to define our own representation: 
+
+\begin{equation}
+\mathbf{x}_t  = \sum_{w_i \in t} \mathcal{I}(w_i) \cdot \mathbf{x}_i 
+\label{eq:sum_of_words}
+\end{equation}
+where $\mathbf{x}_t$ is the representation of tweet $t$, $\mathbf{x}_i$ is the representation of word $w_i$ in tweet $t$ and, most importantly, $\mathcal{I}(w_i)$ is the importance of word $w_i$\footnote{note: notation suggests that this is a function which is not the case here...}.  
+
+In our work, we are specifically interested in defining function $\mathcal{I}$. Initially, we will consider some simple cases such as constant functions, e.g., $\mathcal{I}(w_i) = 1$ or $\mathcal{I}(w_i) = \frac{1}{|t|}$. Next, we will move to more complex representation where we learn specific functions depending on the different semantic features that we want to model.  
+
+
+
+\subsection{Multi-Task Distance Function for Tweets}
+
+We want to learn a distance function between word representations of tweets and other type of word sequences. Formally, we wish to learn $d_{\mathcal{T}} (\mathbf{x}_t, \mathbf{x})$ where $\mathbf{x}_t$ and $\mathbf{x}$ are word representations of respectively a tweet and any other type of sequence of words. We imagine to apply such distance function in problems pertaining to information retrieval. For instance, we could use it to help analytics or nlp teams to mine twitter data in a much more focused and sophisticated fashion, defining queries based on the user sentiments, on specific keywords or topics. 
+
+In this work, we take inspiration from [REF] and define our distance function as the Mahalanobis distance between the two vector representations: 
+
+\begin{equation}
+d_{\mathcal{T}} (\mathbf{x}_t, \mathbf{x}) = \sqrt{  (\mathbf{x}_t - \mathbf{x})^{\intercal}\ \mathbf{W}\ (\mathbf{x}_t - \mathbf{x})}
+\end{equation}
+
+
+%\bibitem{parameswaran2010} 
+%Shibin Parameswaran, Kilian Q. Weinberger. 
+%\textit{Large Margin Multi-Task Metric Learning}. NIPS 2010
+
+%\bibitem{ling2015} 
+%Wang Ling, Lin Chu-Cheng, Yulia Tsvetkov, Silvio Amir, Ramon Fernandez Astudillo, Chris Dyer, Alan W. Black, Isabel Trancoso. 
+%\textit{Not All Context Are Created Equal: Better Word Representations with Variable Attention}.
+\end{document}
