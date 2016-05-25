@@ -1,24 +1,21 @@
 \def\year{2016}
 %File: formatting-instruction.tex
 \documentclass[letterpaper]{article}
-\usepackage{aaai}
-\usepackage{times}
-\usepackage{helvet}
-\usepackage{courier}
-\usepackage{amsfonts}
+%\usepackage{aaai}
+%\usepackage{times}
+%\usepackage{helvet}
+%\usepackage{courier}
+%\usepackage{amsfonts}
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{color}
-\usepackage{graphicx}
-\usepackage{subfigure}
-\graphicspath{{figs/}}
-\frenchspacing
-\setlength{\pdfpagewidth}{8.5in}
-\setlength{\pdfpageheight}{11in}
-\pdfinfo{
-/Title (Project Main)
-/Author (XXX)}
-\setcounter{secnumdepth}{0}  
+%\usepackage{color}
+%\usepackage{graphicx}
+%\usepackage{subfigure}
+%\graphicspath{{figs/}}
+%\frenchspacing
+%\setlength{\pdfpagewidth}{8.5in}
+%\setlength{\pdfpageheight}{11in}
+%\setcounter{secnumdepth}{0}  
  \begin{document}
 % The file aaai.sty is the style file for AAAI Press 
 % proceedings, working notes, and technical reports.
@@ -33,7 +30,7 @@
 
 \section{Problem Description}
 
-From a high-level perspective the aim of this work is to make sense of twitter data. Specifically, we aim to extract information from tweets, and use such information to measure similarity between tweets. Our scope is general, we wish to capture all types of information--- the topic of a tweet, the sentiments of the user posting the tweet or some of the keywords used in the tweet--- and use it to define the best possible similarity, or distance, measure between tweets.
+From a high-level perspective the aim of this work is to make sense of twitter data. Specifically, we aim to extract information from tweets, and use such information to measure similarity between tweets. Our scope is general, we wish to capture all types of information--- the topic of a tweet, the sentiments of the user posting the tweet or the relevance of a tweet to some specific question--- and use it to define the best possible similarity, or distance, measure between tweets.
 
 There exists a vast literature about measuring similarity between words, sentences, paragraphs and general documents. The key idea, is to transform a sequence of words into a vector representation within a vector space and then use standard distance metrics, such as euclidean or cosine distance to define their similarity. Cosine similarity, in particular, has been shown to characterize well the semantic similarity between sequences of words. In essence, the cosine similarity of two vectors $v_1$ and $v_2$ varies within a spectrum of values going from $0$, in which case the two vectors are orthogonal (i.e., no semantic similarity at all) to $v_1 \cdot v_2 = v^2$ in which case the two vectors are parallel (same semantics). 
 
@@ -45,7 +42,9 @@ We consider a set of tweets $\mathcal{T} = \{ t_1, t_2, t_3, \dots, t_M \}$, whe
 
 \subsection{Word Representations for Tweets}
 
-We wish to define a word representation $\mathbf{x}_t$ for each tweet $t \in \mathcal{T}$. Ideally, we could use one of the existing word2vec models which calculate a vector representation by counting word n-gram frequencies. By doing so, however, we would consider each word within a tweet to have same importance as the other ones. This is clearly not the case, specifically in the context of tweets, as some keywords will matter much more than others when trying to understand the semantics of a tweet, i.e., the sentiment of the user which posted such tweet. Nonetheless, we can build upon CBOW, a well-known word2vec embedding, to define our own representation: 
+We wish to define a word representation $\mathbf{x}_t$ for each tweet $t \in \mathcal{T}$. Ideally, we could use one of the existing word2vec models, which calculate a vector representation by counting word n-gram frequencies and calculating the probability that a specific sequence of word will appear together within a specific set of documents \cite{Mikolov2013a}. By doing so, however, we would consider each word within a tweet to have the same importance as the other ones. 
+
+In information retrieval applications, this is not recommended. To understand the context, or the semantics, of tweets, some keywords will matter more than others and this importance need to be reflected in the vector representation of a specific tweet. For instance, if a twitter user talks about a specific movie in either a positive or negative way, all keywords referring to the movie or about the user's sentiment about it need to be emphasized.  To achieve this type of representation, in our work, we build upon CBOW \cite{Mikolov2013a}, and upon the model described in \cite{Ling2015a}, to define our own representation: 
 
 \begin{equation}
 \mathbf{x}_t  = \sum_{w_i \in t} \mathcal{I}(w_i) \cdot \mathbf{x}_i 
@@ -53,26 +52,35 @@ We wish to define a word representation $\mathbf{x}_t$ for each tweet $t \in \ma
 \end{equation}
 where $\mathbf{x}_t$ is the representation of tweet $t$, $\mathbf{x}_i$ is the representation of word $w_i$ in tweet $t$ and, most importantly, $\mathcal{I}(w_i)$ is the importance of word $w_i$\footnote{note: notation suggests that this is a function which is not the case here...}.  
 
-In our work, we are specifically interested in defining function $\mathcal{I}$. Initially, we will consider some simple cases such as constant functions, e.g., $\mathcal{I}(w_i) = 1$ or $\mathcal{I}(w_i) = \frac{1}{|t|}$. Next, we will move to more complex representation where we learn specific functions depending on the different semantic features that we want to model.  
+In our work, we are specifically interested in defining the function $\mathcal{I}$. Initially, we will consider some simple cases such as constant functions, e.g., $\mathcal{I}(w_i) = 1$ or $\mathcal{I}(w_i) = \frac{1}{|t|}$. Next, we plan to define this function such that it learns all the different pieces of information that we wish to extract from a tweet, e.g., relevance, sentiment, topic, \emph{etc}.  One simple example of a function could be $\mathcal{I}(w_i) = c_{r} (w_i) \cdot c_{a} (w_i) \cdot c_{s} (w_i)$, where $c_{r}$, $c_{a}$ and $c_{s}$ are well-defined coefficients leveraging, respectively, the relevance, the topic and the sentiment of word $ w_i$ in tweet $t$. 
 
-
+One interesting aspect of function $\mathcal{I}$ is that it transforms the original problem of learning a word representation into a multi-task learning problem, whereby each task is a piece of information that we wish to extract from a tweet, as discussed above. With this new function then, we need to define a new type of distance function that uses the information provided by each task to improve its accuracy.  
 
 \subsection{Multi-Task Distance Function for Tweets}
 
-We want to learn a distance function between word representations of tweets and other type of word sequences. Formally, we wish to learn $d_{\mathcal{T}} (\mathbf{x}_t, \mathbf{x})$ where $\mathbf{x}_t$ and $\mathbf{x}$ are word representations of respectively a tweet and any other type of sequence of words. We imagine to apply such distance function in problems pertaining to information retrieval. For instance, we could use it to help analytics or nlp teams to mine twitter data in a much more focused and sophisticated fashion, defining queries based on the user sentiments, on specific keywords or topics. 
+We want to learn a distance function between word representations of tweets, as discussed in the previous section, and, potentially of any type of sequences of words (e.g., keywords, queries, sentences, \emph{etc}...). Formally, we define the distance metric as $d(\mathbf{x}_t, \mathbf{x}_s)$ where $\mathbf{x}_t$ and $\mathbf{x}_s$ are word representations of respectively a tweet $t$ and a sequence of words $s$. One possible application of this metric is information retrieval. Data analytics teams often need to mine very large datasets, looking for tweets about specific topics, reflecting a specific sentiment, or relevant to a specific query. These retrieval tasks are typically solved by searching for well-defined key-words within the tweets. However, a more sophisticated type of search, which understands the context of a specific tweet, could be much more accurate for this 
+type of semantic queries. 
 
-In this work, we take inspiration from [REF] and define our distance function as the Mahalanobis distance between the two vector representations: 
+In this work, we take inspiration from \cite{Parameswaran2010a} and define the distance function for a specific task $s, r$ or $a$ as the Mahalanobis distance between the two vector representations: 
+\begin{align}
+d_{s} (\mathbf{x}_t, \mathbf{x}) &= \sqrt{  (\mathbf{x}_t - \mathbf{x})^{\intercal}\ (\mathbf{W}_0 + \mathbf{W}_s)\ (\mathbf{x}_t - \mathbf{x})}\\
+d_{r} (\mathbf{x}_t, \mathbf{x}) &= \sqrt{  (\mathbf{x}_t - \mathbf{x})^{\intercal}\ (\mathbf{W}_0 + \mathbf{W}_r)\ (\mathbf{x}_t - \mathbf{x})}\\
+d_{a} (\mathbf{x}_t, \mathbf{x}) &= \sqrt{  (\mathbf{x}_t - \mathbf{x})^{\intercal}\ (\mathbf{W}_0 + \mathbf{W}_a)\ (\mathbf{x}_t - \mathbf{x})}
+\end{align}
+where each of the matrices $\mathbf{W}_0$, $\mathbf{W}_s$, $\mathbf{W}_r$ and $\mathbf{W}_a$ is positive semi-definite and has the same meaning as in \cite{Parameswaran2010a}, i.e., $\mathbf{W}_0$ picks up general trends across the entire dataset $\mathcal{T}$, whereas $\mathbf{W}_s$, $\mathbf{W}_r$ and $\mathbf{W}_a$ pick up trends pertaining to each specific task.  
 
-\begin{equation}
-d_{\mathcal{T}} (\mathbf{x}_t, \mathbf{x}) = \sqrt{  (\mathbf{x}_t - \mathbf{x})^{\intercal}\ \mathbf{W}\ (\mathbf{x}_t - \mathbf{x})}
-\end{equation}
+Given the three distances above, and a specific tweet $t$, we can define the optimization problem that we wish to solve as follows: 
+{\footnotesize
+\begin{align}
+&\min_{\mathbf{W}_0, \mathbf{W}_s, \mathbf{W}_r, \mathbf{W}_a} \gamma_0 || \mathbf{W}_0 - \mathbf{I}||^2_F + \sum_{l \in \{s, r, a\}} \left[  \gamma_l || \mathbf{W}_l ||^2_F + \sum d_{l}^2 ( \mathbf{x}_t, \mathbf{x} ) + \sum_{(t,j,k) \in S_l} \xi_{tjk} \right]\\
+&\quad \quad \mathbf{subject\ to:}\ \forall l \in \{ s, r, a\}, \forall (t, j, k) \in S_l: \\
+& \quad \quad \quad \quad d^2_l ( \mathbf{x}_t,  \mathbf{x}_j) - d^2_l ( \mathbf{x}_t,  \mathbf{x}_j) \leq 1 - \xi_{tjk}\\ 
+& \quad \quad \quad \quad \xi_{tjk} \geq 0\\
+& \quad \quad \quad \quad \mathbf{W}_0, \mathbf{W}_s, \mathbf{W}_r, \mathbf{W}_a \succeq	0
+\end{align}
+}
+One important difference with \cite{Parameswaran2010a} is that twitter data is unsupervised, and is often very large. This means that: (i) we do not have a predefined dataset of neighbors, (ii) calculating this dataset for \emph{all} instances is practically impossible and, finally (iii) the optimization problem defined above, as acknowledged by the authors in \cite{Parameswaran2010a} will not scale to datasets with more than 10000 instances.  These are the three research challenges that we will try to address in this work. Specifically, (i) and (ii) will require some form of active learning, which will be discussed later. Then, we aim to solve the third challenge by using a neural network representation of the problem. Our initial ideas to address this challenge are discussed next.
+\bibliography{bibliography}
+\bibliographystyle{plain}
 
-
-%\bibitem{parameswaran2010} 
-%Shibin Parameswaran, Kilian Q. Weinberger. 
-%\textit{Large Margin Multi-Task Metric Learning}. NIPS 2010
-
-%\bibitem{ling2015} 
-%Wang Ling, Lin Chu-Cheng, Yulia Tsvetkov, Silvio Amir, Ramon Fernandez Astudillo, Chris Dyer, Alan W. Black, Isabel Trancoso. 
-%\textit{Not All Context Are Created Equal: Better Word Representations with Variable Attention}.
 \end{document}

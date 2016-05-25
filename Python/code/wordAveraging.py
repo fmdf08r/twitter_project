@@ -40,14 +40,13 @@ def read_df(df):
 
 def wordCounter(nbr, fileName, w2v_size):
     print("running: " + str(nbr))
-    model = Word2Vec.load('../models/bigram.txt.full.doc2vec.word_model')
+    model = Word2Vec.load('../models/unigram.txt.disney_random.doc2vec.word_model')
     stop_words = [line.strip('\n') for line in open("stop_words.txt",'r')]
     avgDict = {}
     df = pd.read_csv(fileName, header=None)
-    tweets = read_df(df.iloc[0:300000])
+    tweets = read_df(df)
     print(str(nbr) + " starting computation")
     total = len(tweets)
-    print str(total)
     for i in range(total):
         if i % 100000 == 0: print("t_" + str(nbr) + ": iteration: " + str(i))
         length = len(tweets[i])
@@ -55,28 +54,31 @@ def wordCounter(nbr, fileName, w2v_size):
         ls = ' '.join(tweets[i])
         for word in tweets[i]:
             if word in stop_words: continue
-            if word in model.vocab.keys():
+            if str(word) in model.vocab.keys():
                 avg += model[word] 
         avgDict[ls] = avg / float(length)
     # print everything
-    print( "length: " + str(len(avgDict.keys()) ) )
     print("t_" + str(nbr)+ ": printing to file")
     saveFile = "../results/disney_word_averages_" + str(nbr) + ".csv"
-    with open(saveFile, 'wb') as f:
-        for k, v in avgDict.iteritems():
-            for i in range( len(v) ):
-                f.write( str(v[i] ) )
-                if i < len(v) - 1:
-                    f.write(", ")
-                else: 
-                    f.write("\n")
-        f.close()
+    tweetsFile = "../datasets/disney_tweets_purified_" + str(nbr) + ".csv"
+    with open(saveFile, 'wb') as f1:
+        with open(tweetsFile, 'wb') as f2:
+            for k, v in avgDict.iteritems():
+                f2.write(str(k) + "\n")
+	        for i in range( len(v) ):
+                    f1.write( str(v[i] ) )
+                    if i < len(v) - 1:
+                        f1.write(", ")
+                    else: 
+                        f1.write("\n")
+            f2.close()
+	f1.close()
     print("t_" + str(nbr)+ ": completed")
 
 ###############
 ## MAIN FILE ##
 ###############
-filesNbr = 1
+filesNbr = 14
 print("Main Thread: word count starting: ")
 wcts = []
 avgDicts = []
@@ -93,4 +95,3 @@ for i in range(1, filesNbr+1):
 for t in wcts: 
     t.join()
 print("Main Thread: word count completed")
-
