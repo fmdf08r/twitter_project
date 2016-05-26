@@ -9,7 +9,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 %\usepackage{color}
-%\usepackage{graphicx}
+\usepackage{graphicx}
 %\usepackage{subfigure}
 %\graphicspath{{figs/}}
 %\frenchspacing
@@ -63,9 +63,9 @@ type of semantic queries.
 
 In this work, we take inspiration from \cite{Parameswaran2010a} and define the distance function for a specific task $s, r$ or $a$ as the Mahalanobis distance between the two vector representations: 
 \begin{align}
-d_{s} (\mathbf{x}_t, \mathbf{x}) &= \sqrt{  (\mathbf{x}_t - \mathbf{x})^{\intercal}\ (\mathbf{W}_0 + \mathbf{W}_s)\ (\mathbf{x}_t - \mathbf{x})}\\
-d_{r} (\mathbf{x}_t, \mathbf{x}) &= \sqrt{  (\mathbf{x}_t - \mathbf{x})^{\intercal}\ (\mathbf{W}_0 + \mathbf{W}_r)\ (\mathbf{x}_t - \mathbf{x})}\\
-d_{a} (\mathbf{x}_t, \mathbf{x}) &= \sqrt{  (\mathbf{x}_t - \mathbf{x})^{\intercal}\ (\mathbf{W}_0 + \mathbf{W}_a)\ (\mathbf{x}_t - \mathbf{x})}
+d_{s} (\mathbf{x}_t, \mathbf{x}) &= \sqrt{  (\mathbf{x}_t - \mathbf{x})^{\intercal}\ (\mathbf{W}_0 + \mathbf{W}_s)\ (\mathbf{x}_t - \mathbf{x})}\label{eq:dist-1}\\
+d_{r} (\mathbf{x}_t, \mathbf{x}) &= \sqrt{  (\mathbf{x}_t - \mathbf{x})^{\intercal}\ (\mathbf{W}_0 + \mathbf{W}_r)\ (\mathbf{x}_t - \mathbf{x})}\label{eq:dist-2}\\
+d_{a} (\mathbf{x}_t, \mathbf{x}) &= \sqrt{  (\mathbf{x}_t - \mathbf{x})^{\intercal}\ (\mathbf{W}_0 + \mathbf{W}_a)\ (\mathbf{x}_t - \mathbf{x})}\label{eq:dist-3}
 \end{align}
 where each of the matrices $\mathbf{W}_0$, $\mathbf{W}_s$, $\mathbf{W}_r$ and $\mathbf{W}_a$ is positive semi-definite and has the same meaning as in \cite{Parameswaran2010a}, i.e., $\mathbf{W}_0$ picks up general trends across the entire dataset $\mathcal{T}$, whereas $\mathbf{W}_s$, $\mathbf{W}_r$ and $\mathbf{W}_a$ pick up trends pertaining to each specific task.  
 
@@ -80,6 +80,22 @@ Given the three distances above, and a specific tweet $t$, we can define the opt
 \end{align}
 }
 One important difference with \cite{Parameswaran2010a} is that twitter data is unsupervised, and is often very large. This means that: (i) we do not have a predefined dataset of neighbors, (ii) calculating this dataset for \emph{all} instances is practically impossible and, finally (iii) the optimization problem defined above, as acknowledged by the authors in \cite{Parameswaran2010a} will not scale to datasets with more than 10000 instances.  These are the three research challenges that we will try to address in this work. Specifically, (i) and (ii) will require some form of active learning, which will be discussed later. Then, we aim to solve the third challenge by using a neural network representation of the problem. Our initial ideas to address this challenge are discussed next.
+
+\section{A Neural Network Representation for learning Mahalanobis Distance}
+
+Our objective is to define a neural network architecture that can learn equations \ref{eq:dist-1}, \ref{eq:dist-2} and \ref{eq:dist-3}: 
+\begin{equation}
+\forall i \in \{s, t, o\}\  d_i(\mathbf{x}_t, \mathbf{x}) = \sqrt{( \mathbf{x}_t - \mathbf{x})^\intercal(\mathbf{W}_0 + \mathbf{W}_i) ( \mathbf{x}_t - \mathbf{x})} 
+\end{equation}
+In essence, this job consists of learning the mahalanobis matrix $\mathbf{W} = \mathbf{W}_0 + \mathbf{W}_i$, which can be done by adapting a siamese network, a well known type of neural network representation used in computer vision \cite{Chopra2005a, Zagoryuko2015}, to the setting being studied here. The architecture is described in Figure \ref{fig:siamese_1}.  
+
+\begin{figure}
+\centering
+\includegraphics[width=0.7\linewidth]{figures/siamese_1}
+\label{fig:siamese_1}
+\caption{The architecture of a siamese network}
+\end{figure}
+
 \bibliography{bibliography}
 \bibliographystyle{plain}
 
