@@ -83,18 +83,48 @@ One important difference with \cite{Parameswaran2010a} is that twitter data is u
 
 \section{A Neural Network Representation for learning Mahalanobis Distance}
 
-Our objective is to define a neural network architecture that can learn equations \ref{eq:dist-1}, \ref{eq:dist-2} and \ref{eq:dist-3}: 
-\begin{equation}
-\forall i \in \{s, t, o\}\  d_i(\mathbf{x}_t, \mathbf{x}) = \sqrt{( \mathbf{x}_t - \mathbf{x})^\intercal(\mathbf{W}_0 + \mathbf{W}_i) ( \mathbf{x}_t - \mathbf{x})} 
-\end{equation}
-In essence, this job consists of learning the mahalanobis matrix $\mathbf{W} = \mathbf{W}_0 + \mathbf{W}_i$, which can be done by adapting a siamese network, a well known type of neural network representation used in computer vision \cite{Chopra2005a, Zagoryuko2015}, to the setting being studied here. The architecture is described in Figure \ref{fig:siamese_1}.  
-
 \begin{figure}
 \centering
 \includegraphics[width=0.7\linewidth]{figures/siamese_1}
 \label{fig:siamese_1}
 \caption{The architecture of a siamese network}
 \end{figure}
+
+Our objective is to define a neural network architecture that can learn equations \ref{eq:dist-1}, \ref{eq:dist-2} and \ref{eq:dist-3}, which we summarize below: 
+\begin{equation}
+\forall i \in \{s, t, o\}\  d_i(\mathbf{x}_t, \mathbf{x}) = \sqrt{( \mathbf{x}_t - \mathbf{x})^\intercal(\mathbf{W}_0 + \mathbf{W}_i) ( \mathbf{x}_t - \mathbf{x})}\label{eq:mahalanobis-dist} 
+\end{equation}
+In essence, this job consists of learning the Mahalanobis matrix $\mathbf{W} = \mathbf{W}_0 + \mathbf{W}_i$, which can be done by adapting a siamese network, a well known type of neural network representation used in computer vision \cite{Chopra2005a, Zagoryuko2015}, to the setting being studied here. The architecture is described in Figure \ref{fig:siamese_1}.  To understand how it works, we can think of it as a pipeline, which proceeds in three phases.  
+
+First, a weighted average of two tweets is calculated: 
+\begin{align}
+\mathbf{x}_{t_1} &= \sum^N_{i =1} \alpha^1_i x_{w^1_i}\\
+\mathbf{x}_{t_2} &= \sum^N_{i =1} \alpha^2_i x_{w^2_i} 
+\end{align}
+Note that in our specific case, to follow exactly Equation \ref{eq:mahalanobis-dist}, we should learn the distance between differences of word representations, i.e., $(\mathbf{x}_t - \mathbf{x})$. In what follows, for the sake of clarity, we simplified the description of the architecture, by considering only single word representations. The general architecture is pretty similar to the one in the figure. It simply adds a difference operator to the first layer. 
+
+Second, we learn a linear Neural Network layer based on these two representations: $f(\mathbf{x}_{t_1}) = (\mathbf{W}_0 + \mathbf{W}_i) \mathbf{x}_{t_1}$ and $f(\mathbf{x}_{t_2}) = (\mathbf{W}_0 + \mathbf{W}_i) \mathbf{x}_{t_2}$. One key constraint, here is that the two matrices  $\mathbf{W}_0$ and $\mathbf{W}_i$ need to remain the same for both representations $\mathbf{x}_{t_1}$ and $\mathbf{x}_{t_2}$. This equality constraint needs to be enforced during training. 
+
+The advantage of using a siamese network can be seen in the third phase. Here we multiply the output of the two previous phases and we obtain a positive semi-definite matrix as required by the Mahalanobis distance: 
+\begin{align}
+f( \mathbf{x}_{t_1}, \mathbf{x}_{t_2} ) &= (\mathbf{W} \mathbf{x}_{t_1})^\intercal (\mathbf{W} \mathbf{x}_{t_2})\\
+&= \mathbf{x}^{\intercal}_{t_1} \mathbf{W}^\intercal \mathbf{W} \mathbf{x}_{t_2}\\
+&= \mathbf{x}^{\intercal}_{t_1} \mathbf{L} \mathbf{x}_{t_2}
+\end{align} 
+where $\mathbf{W} = \mathbf{W}_0 + \mathbf{W}_i$ for each specific task $i$ and $\mathbf{L}$ is positive semi-definite since it is the product of two matrices. 
+
+Finally, we describe the cost function used to train this architecture. We define $g(\mathbf{x}_{t_1}, \mathbf{x}_{t_2}) = f(\mathbf{x}_{t_1})^\intercal f(\mathbf{x}_{t_2})$, i.e., the output of the siamese network. The objective of our problem is to minimize the following loss function: 
+\begin{equation}
+\max (0, m - h(\mathbf{x}_{t_1}, \mathbf{x}_{t_2}, \mathbf{x}_{t_3}) )
+\label{eq:loss}
+\end{equation}
+where $m$ is a slack variable to account for noise in the data and h is a function which calculates the distance between positive and negative examples: 
+\begin{equation}
+h(\mathbf{x}_{t_1}, \mathbf{x}_{t_2}, \mathbf{x}_{t_3}) = g(\mathbf{x}_{t_1}, \mathbf{x}_{t_2}) - g(\mathbf{x}_{t_1}, \mathbf{x}_{t_3}) 
+\end{equation}
+where $t_1$ and $t_2$ are positive examples, in the sense that they are close between each other, and $t_3$ is a negative example because it is far from $t_1$. 
+
+Hence, to use the architecture in Figure \ref{fig:siamese_1}, one need to solve Equation \ref{eq:loss} for both positive and negative examples. To achieve this, we will use Amazon Mechanical Turk. Our idea is to implement an active learning routine, where iteratively: (i) we ask workers on Mechanical Turk to determine positive and negative examples and (ii) we use these examples to calculate our new representation and repeat until we are satisfied with the result. 
 
 \bibliography{bibliography}
 \bibliographystyle{plain}
