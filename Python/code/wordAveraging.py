@@ -75,6 +75,7 @@ def wordCounter(nbr, fileName, w2v_size):
 	f1.close()
     print("t_" + str(nbr)+ ": completed")
 
+'''
 ###############
 ## MAIN FILE ##
 ###############
@@ -95,3 +96,4 @@ for i in range(1, filesNbr+1):
 for t in wcts: 
     t.join()
 print("Main Thread: word count completed")
+'''
