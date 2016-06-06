@@ -15,8 +15,8 @@ wAvgs_path = "../results/disney_word_averages_"
 size = 300
 
 class SimilarityMetric:
-    def __init__(self, filesNbr):
-        self.filesNbr = filesNbr
+    def __init__(self, files):
+        self.files_list = files
         self.size = size
 
     def initialize(self):
@@ -29,7 +29,7 @@ class SimilarityMetric:
         sys.stdout.write("...loaded\n")
         sys.stdout.write("3 - Word-Averages model: ")
         self.wordAverages = defaultdict()
-        for i in range(1, self.filesNbr + 1):
+        for i in self.files_list:
             sys.stdout.write(str(i) + " - ")
             sys.stdout.flush()
             tweetsFile = tweets_path + str(i) + ".csv"
@@ -152,6 +152,13 @@ class SimilarityMetric:
             output[ s ] = self.similarity_1(s, keywords) 
         return output
 
+    def exact_search(self, keyword, k):
+        matches = []
+        for t, v in self.wordAverages.iteritems():
+            if keyword in t: matches.append(t)
+        return matches[0:k]
+
+'''    
 # tests
 myMetric = SimilarityMetric(1)
 myMetric.initialize()
@@ -188,4 +195,14 @@ for k, v in sorted_tweets.iteritems():
     sys.stdout.write(str(k) + "\n" )
     sys.stdout.write("val = " + str(v) + '\n')
 sys.stdout.write("calculating 5 maxes  took: " + str( t4_end - t4_start ) + "\n" )
+
+t5_start = datetime.datetime.now()
+matches = myMetric.exact_search('starwars')
+t5_end = datetime.datetime.now()
+sys.stdout.write("best matches: \n")
+for t in matches[0:5]:
+    sys.stdout.write(t + "\n")
+sys.stdout.write("calculating matches took: " + str( t5_end - t5_start ) + "\n" )
+'''
+
 
