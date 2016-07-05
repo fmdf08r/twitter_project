@@ -14,7 +14,7 @@ class W2V_Generator:
         self.name = name
         self.wordAverages = defaultdict(list)
         self.df = pd.read_csv(files_path + name + extension, header=0)
-        self.w2v_size = 300
+        self.w2v_size = 100
 
     def calcW2Vrep(self, log):
         tweets = self.df.loc[:,'Tweet']

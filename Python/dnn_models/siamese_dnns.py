@@ -1,69 +1,102 @@
+from sklearn import preprocessing
 from keras.models import Model
-from keras.layers import Input, Dense
+from keras.layers import Input, Dense, Dropout, merge
+from keras.optimizers import SGD, RMSprop, Adam
+from keras.regularizers import l2
+from keras import backend as K
 from collections import defaultdict
+import numpy as np
+import theano as T
+
 import sys
 import pandas as pd
 
-filepath = '../datasets/StanceDataset/'
+T.config.exception_verbosity = 'high'
 
-def cartesian_product(tw, vs, target):
-    vals = defaultdict(list)
-    stance = defaultdict(int)
-    sentiment = defaultdict(int)
-    for idx, r in tw.iterrows():
-        tweet = r[ 'Tweet' ]
-        vals[ tweet ].extend( vs.iloc[idx,:].values.tolist() )
-        stance[ tweet ] = int( r[ 'Stance' ] )
-        sentiment[ tweet ] = int( r[ 'Sentiment' ] )
-    dataset = defaultdict(list)
-    names = []
-    for i in range(2 * vs.shape[1]) : names.append( str(i) )
-    i = 0
-    for i1, r1 in tw.iterrows():
-        for i2, r2 in tw.iterrows():
-            #####################
-            if i % 10000 == 0: 
-                sys.stdout.write('iteration: ' + str(i) + '\n')
-            i += 1
-            #####################
-            for n in names: 
-                values = []
-                el = 0.0
-                if int(n) < vs.shape[1]: 
-                    values.extend( vals[ r1['Tweet'] ] )
-                    el = values[ int(n) ]
-                else: 
-                    values.extend( vals[ r2['Tweet'] ] )
-                    el = values[ int(n) - vs.shape[1] ]
-                dataset[ n ].append( el )
 
-            st1 = stance[ r1['Tweet'] ]
-            st2 = stance[ r2['Tweet'] ]
-            se1 = sentiment[ r1['Tweet'] ]
-            se2 = sentiment[ r2['Tweet'] ]
-            if target == 0:
-                dataset['Stance'].append( int(st1 == st2) )
-            elif target == 1:
-                dataset['Sentiment'].append( int(se1 == se2))
-            else:
-                dataset['Stance'].append( int(st1 == st2) ) 
-                dataset['Sentiment'].append( int(se1 == se2) )
-    cols = names
-    if target == 0: cols.append('Stance')
-    elif target == 1: cols.append('Sentiment')
-    else: cols.extend(['Stance','Sentiment'])
-    df = pd.DataFrame(dataset,columns=cols)  
+m = 5
 
-    return df
+def cost_function(y_true, y_pred):
+    v = m - K.sum(y_pred, axis=0)
+    z = T.tensor.scalar()
+    if T.tensor.gt(v,z): return v
+    return z
+ 
+dropout = 0.2
 
-tw1 = pd.read_csv(filepath + 'train_purified.wAvgs.tweets.csv',header=0)
-tw2 = pd.read_csv(filepath + 'test_purified.wAvgs.tweets.csv',header=0)
-tweets = pd.concat([tw1, tw2], axis=0)
+# loading data
+training_df = pd.read_csv('training_set.csv',header=0)
+labels_df = pd.read_csv('training_labels.csv',header=0)
 
-l1 = pd.read_csv(filepath + 'train_purified.wAvgs.values.csv',header=0)
-l2 = pd.read_csv(filepath + 'test_purified.wAvgs.values.csv',header=0)
-values = pd.concat([l1, l2], axis=0)
+training_data = training_df.values
+labels_data = labels_df.values
 
-# calculate cartesian product
-df = cartesian_product(tweets, values, 0) # 0: Stance ; 1: Sentiment; 2: Stance & Sentiment
-df.to_csv('data.csv',header=True,index=False)
+xTrain = training_data[0:1000]
+yTrain = labels_data[0:1000]
+
+testing_df = pd.read_csv('testing_set.csv', header=0)
+tLabels_df = pd.read_csv('testing_labels.csv', header=0)
+
+testing_data = testing_df.values
+
+tLabels_data = tLabels_df.values
+
+xTest = testing_data[0:200]
+yTest = tLabels_data[0:200]
+
+# standardization
+scaler = preprocessing.StandardScaler().fit(xTrain)
+scaler.transform(xTrain)
+scaler.transform(xTest)
+
+num_examples = xTrain.shape[0]
+dims =  int( xTrain.shape[1] / 3 )
+layer_nodes = dims
+
+pos1 = Input( shape=(dims,) )
+pos2 = Input( shape=(dims,) )
+neg2 = Input( shape=(dims,) )
+
+W_0 = Dense(layer_nodes, input_shape=(dims,), activation='linear', W_regularizer=l2(0.01), init='glorot_uniform')
+W_St = Dense(layer_nodes, input_shape=(dims,), activation='linear', W_regularizer=l2(0.01), init='glorot_uniform')
+
+##########################################
+# FIRST SIAMESE NETWORK
+# linear layer
+W_01 = Dropout(dropout)( W_0( pos1 ) )
+W_St1 = Dropout(dropout)( W_St( pos1 ) )
+W_m1 = merge([W_01, W_St1], mode='sum')
+# second layer
+W_02 = Dropout(dropout)( W_0( pos2 ) )
+W_St2 = Dropout(dropout)( W_St( pos2 ) ) 
+W_m2 = merge([W_02, W_St2], mode='sum')
+# third layer
+W_mul1 = merge([W_m1, W_m2], mode='dot', dot_axes=1)
+##########################################
+
+##########################################
+# SECOND SIAMESE NETWORK
+# linear layer
+W_03 = Dropout(dropout)( W_0( pos1 ) )
+W_St3 = Dropout(dropout)( W_St( pos1 ) )
+W_m3 = merge([W_03, W_St3], mode='sum')
+# second layer
+W_04 = Dropout(dropout)( W_0( neg2 ) )
+W_St4 = Dropout(dropout)( W_St( neg2 ) ) 
+W_m4 = merge([W_04, W_St4], mode='sum')
+# third layer
+W_mul2 = merge([W_m3, W_m4], mode='dot', dot_axes=1)
+##########################################
+
+##########################################
+# LAST LAYER
+W_sub = merge([W_mul1, W_mul2], mode=lambda x: x[0] - x[1], output_shape=lambda x: x[0])
+
+model = Model(input=[pos1, pos2, neg2], output=W_sub)
+
+# adaptive SGD
+adam=Adam(lr=0.001, beta_1=0.9,beta_2=0.999, epsilon=1e-08)
+
+model.compile(loss=cost_function, optimizer=adam)
+model.fit([ xTrain[:,0:100], xTrain[:,100:200], xTrain[:,200:] ], yTrain, batch_size=10, nb_epoch=10, verbose=1,shuffle=True)
+
