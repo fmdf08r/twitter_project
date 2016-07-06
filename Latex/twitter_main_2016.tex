@@ -21,20 +21,29 @@
 % proceedings, working notes, and technical reports.
 %
 \title{Twitter Project: White Paper}
-\author{F. M. Delle Fave
-%Association for the Advancement of Artificial Intelligence\\
-%2275 East Bayshore Road, Suite 160\\
-%Palo Alto, California 94303\\
+\author{Francesco. M. Delle Fave, Albert Li, and Leon Sigal \\
+Disney Research
 }
 \maketitle
 
-\section{Problem Description}
+\section{Twitter Analytics}
 
-From a high-level perspective the aim of this work is to make sense of twitter data. Specifically, we aim to extract information from tweets, and use such information to measure similarity between tweets. Our scope is general, we wish to capture all types of information--- the topic of a tweet, the sentiments of the user posting the tweet or the relevance of a tweet to some specific question--- and use it to define the best possible similarity, or distance, measure between tweets.
+By analyzing Twitter, one can get a first-hand experience of the information explosion. Each day, between 300 million and 600 million tweets are published.\footnote{http://www.businessinsider.com/tweets-on-twitter-is-in-serious-decline-2016-2} Working with this much data is difficult at best. In this project, we aim to help our Twitter analysts with AI that reads and understand natural language. 
 
-There exists a vast literature about measuring similarity between words, sentences, paragraphs and general documents. The key idea, is to transform a sequence of words into a vector representation within a vector space and then use standard distance metrics, such as euclidean or cosine distance to define their similarity. Cosine similarity, in particular, has been shown to characterize well the semantic similarity between sequences of words. In essence, the cosine similarity of two vectors $v_1$ and $v_2$ varies within a spectrum of values going from $0$, in which case the two vectors are orthogonal (i.e., no semantic similarity at all) to $v_1 \cdot v_2 = v^2$ in which case the two vectors are parallel (same semantics). 
+We understand that data analytics is a fluid task. Business environments change quickly. Depending on their information needs, analysts may be interested in extracting different semantic content from tweets. Just to name a few possible tasks, we may extract sentiments (positive, neutral or negative), emotions (joy, sadness, disgust, etc.), affects (anticipation, nolstagia, appreciation, etc.), stances (support or oppose), topics, and so on. We want the returned results to be non-repetitive, so that analysts get the big picture rather than a few repeated tweets. Instead of assuming that we can foresee all possible needs of our analysts, our aim to  {\bf support multiple analytics tasks that can be  customized and tuned interactively.} 
 
-In this work, we aim to define a novel similarity metric which work specifically for measuring semantic similarity between tweets. To be specific, we wish to learn such metric using semi-supervised data. In what follows, we describe our initial model and key ideas about the key research challenges of this work, and on how we wish to proceed from now on. 
+Despite the surface differences of these tasks, we propose a general framework of metric learning, which we believe can support most, if not all, of these tasks as well as novel, analysts-specified needs. Metric learning is the idea that a machine learning algorithm can automatically acquire a measure of similarity between different data points (here each point is a single tweet).
+
+The metric learning framework enables the following use case scenario. Suppose an analyst conceived of a task X. Let's say this task is related to analyzing topics of tweets, but not exactly the same. Thus, the analyst selects a built-in metric for topic, and types in a few search terms. The system will return a number of tweets that are most similar to these search terms based on their topic similarity. After that, among the returned tweets, the analyst can selectively label tweets as relevant and irrelevant. Through metric learning, the system then seeks to learn a metric that reduces distances between relevant tweets and the search terms and increases the distances between irrelevant tweets and the search terms. This process can be repeated until the analyst is satisifed. 
+
+A key idea behind this framework is that semantic meaning of words and sentences can be represented by a high-dimensional vector space, where distances between tweets can be defined and automatically learned from examples. In what follows, we describe our initial model and key ideas about the key research challenges of this work, and on how we wish to proceed from now on. 
+
+
+%From a high-level perspective the aim of this work is to make sense of twitter data. Specifically, we aim to extract information from tweets, and use such information to measure similarity between tweets. Our scope is general, we wish to capture all types of information--- the topic of a tweet, the sentiments of the user posting the tweet or the relevance of a tweet to some specific question--- and use it to define the best possible similarity, or distance, measure between tweets.
+
+%There exists a vast literature about measuring similarity between words, sentences, paragraphs and general documents. The key idea, is to transform a sequence of words into a vector representation within a vector space and then use standard distance metrics, such as euclidean or cosine distance to define their similarity. Cosine similarity, in particular, has been shown to characterize well the semantic similarity between sequences of words. In essence, the cosine similarity of two vectors $v_1$ and $v_2$ varies within a spectrum of values going from $0$, in which case the two vectors are orthogonal (i.e., no semantic similarity at all) to $v_1 \cdot v_2 = v^2$ in which case the two vectors are parallel (same semantics). 
+
+%In this work, we aim to define a novel similarity metric which work specifically for measuring semantic similarity between tweets. To be specific, we wish to learn such metric using semi-supervised data. 
 
 \section{Problem Model}
 
